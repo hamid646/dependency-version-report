@@ -9,6 +9,7 @@ import com.travelex.dependencyversionreport.utils.Utils;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -101,6 +102,7 @@ public class MainController {
         colArtifact.setCellValueFactory(new PropertyValueFactory<>("artifactId"));
         colCurrent.setCellValueFactory(new PropertyValueFactory<>("currentVersion"));
         colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
+        table.setPlaceholder(new Label("Contentless"));
 
         watch.stop();
         log.info("loadRepo took {} ms", watch.getTotalTimeMillis());
@@ -127,11 +129,12 @@ public class MainController {
                     latch.await();
                     Map<String, String> mainPom = renderTree(tree.getLines());
                     Map<String, String> all = renderUpdate(update.getLines());
-
+                    table.getItems().clear();
                     mainPom.forEach((k, v) -> {
                         String s = all.get(k);
                         if (s != null) {
                             report.add(k + ":" + s + ":" + v);
+                            table.getItems().add(new Depend( k,v,s));
                         }
                     });
 
@@ -160,7 +163,6 @@ public class MainController {
             Matcher m = r.matcher(line);
             // m find if foudn it
             if (m.find()) {
-                table.getItems().add(new Depend( m.group(2), m.group(3), m.group(4)));
                 allDependencies.put(m.group(2), m.group(4));
             } else {
                 System.out.println("WTF       : " + line);
