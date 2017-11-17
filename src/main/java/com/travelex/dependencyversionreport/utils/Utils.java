@@ -42,36 +42,42 @@ public class Utils {
         watch.start();
         Map<String, RepositoryContents> map = new HashMap<>();
         RepositoryContents main = null;
-        try {
             main = contentsService.getContents(repo, "/pom.xml").get(0);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         map.put(main.getSha(), main);
         log.info("scanProject1 took {} ms", watch.getTotalTimeMillis());
 
         contentsService.getContents(repo).parallelStream()
-                        .filter(r -> ("dir".equals(r.getType()) && r.getName()
-                                        .startsWith(repo.getName()))).forEach(r -> {
-            RepositoryContents content = null;
-            try {
-                content = contentsService.getContents(repo, r.getName() + "/pom.xml").get(0);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            map.put(content.getSha(), content);
-        });
+                        .filter(r -> ("dir".equals(r.getType()) && r.getName().startsWith(repo.getName())))
+                        .forEach(r -> {
+                            RepositoryContents content = null;
+                            try {
+                                content = contentsService.getContents(repo, r.getName() + "/pom.xml").get(0);
+                            } catch (IOException e) { e.printStackTrace(); }
+                            map.put(content.getSha(), content);
+                        });
 
         log.info("scanProject2 took {} ms", watch.getTotalTimeMillis());
 
         Path path = Files.createDirectories(Paths.get(MAIN_DIR + "/" + repo.getName()));
-        for (Map.Entry<String, RepositoryContents> entry : map.entrySet()) {
-            Path pom = createPom(path, entry.getValue().getPath());
-            Blob blob = dataService.getBlob(repo, entry.getKey());
-            if (pom != null) {
-                Files.write(pom, decoder.decodeBuffer(blob.getContent()));
-            }
-        }
+
+        map.entrySet().parallelStream().forEach(entry -> {
+            Path pom = null;
+            try {
+                pom = createPom(path, entry.getValue().getPath());
+                Blob blob = dataService.getBlob(repo, entry.getKey());
+                if (pom != null) {
+                    Files.write(pom, decoder.decodeBuffer(blob.getContent()));
+                }
+            } catch (IOException e) { e.printStackTrace(); }
+        });
+
+//        for (Map.Entry<String, RepositoryContents> entry : map.entrySet()) {
+//            Path pom = createPom(path, entry.getValue().getPath());
+//            Blob blob = dataService.getBlob(repo, entry.getKey());
+//            if (pom != null) {
+//                Files.write(pom, decoder.decodeBuffer(blob.getContent()));
+//            }
+//        }
 
         watch.stop();
         log.info("scanProject took {} ms", watch.getTotalTimeMillis());

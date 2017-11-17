@@ -3,6 +3,7 @@
 package com.travelex.dependencyversionreport.controllers;
 
 
+import com.travelex.dependencyversionreport.command.MavenCommand;
 import com.travelex.dependencyversionreport.enums.Show;
 import com.travelex.dependencyversionreport.enums.Sort;
 import com.travelex.dependencyversionreport.utils.Utils;
@@ -19,11 +20,9 @@ import org.eclipse.egit.github.core.service.RepositoryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -32,6 +31,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -99,16 +99,28 @@ public class MainController {
             try {
                 for (Repository repo : repositories) {
                     if (repo.getName().equals(selectedItem)) {
+
                         Utils.scanProject(dataService, contentsService, repo);
 
-                        Map<String, String> mainPom = performDependencyUpdate(selectedItem);
-                        Map<String, String> all = performDependencyTree(selectedItem);
+                        CountDownLatch latch = new CountDownLatch(2);
+
+                        MavenCommand update = createMavenCommand(latch, selectedItem, "mvn versions:display-dependency-updates");
+                        MavenCommand tree = createMavenCommand(latch, selectedItem, "mvn dependency:tree");
+
+                        new Thread(update).start();
+                        new Thread(tree).start();
+                        latch.await();
+                        Map<String, String> mainPom = renderTree(tree.getLines());
+                        Map<String, String> all = renderUpdate(update.getLines());
+
                         mainPom.forEach((k, v) -> {
                             String s = all.get(k);
                             if (s != null) {
                                 report.add(k + ":" + s + ":" + v);
                             }
                         });
+
+                        break;
                     }
                 }
 
@@ -124,17 +136,17 @@ public class MainController {
         log.info("load took {} ms", watch.getTotalTimeMillis());
     }
 
-    private Map<String, String> performDependencyUpdate(String project) {
-        Map<String, String> allDependencies = new HashMap<>();
+    private MavenCommand createMavenCommand(CountDownLatch latch, String project, String command) {
+        return new MavenCommand(latch, command, Paths.get("download/" + project).toFile());
+    }
+
+    private Map<String, String> renderUpdate(List<String> output) {
         String pattern = "([a-z0-9.-]+):([A-z0-9-_.]+)[\\. ]+ ([A-z0-9 .-]+) -> ([A-z0-9 .-]+)";
-        System.out.println("Pattern " + pattern);
-        Pattern r = Pattern.compile(pattern);
-
-        String command = "mvn versions:display-dependency-updates";
-
-        List<String> output = filterCommand(command, Paths.get("download/" + project).toFile());
+        Map<String, String> allDependencies = new HashMap<>();
         DependecyController dependecyController = new DependecyController();
-        dependecyController.setProjectName(project);
+        Pattern r = Pattern.compile(pattern);
+//        dependecyController.setProjectName(project);
+
         for (String line : output) {
             Matcher m = r.matcher(line);
             // m find if foudn it
@@ -145,17 +157,16 @@ public class MainController {
                 System.out.println("WTF       : " + line);
             }
         }
+
         showPanel.getChildren().add(dependecyController);
         return allDependencies;
     }
 
-    private Map<String, String> performDependencyTree(String project) {
+    private Map<String, String> renderTree(List<String> output) {
         String pattern = "\\] \\+- ([a-z0-9-_.]+):([a-z0-9-_.]+):[a-z]+:([A-z0-9.-]+)";
         Pattern r = Pattern.compile(pattern);
-        String command = "mvn dependency:tree";
         Map<String, String> mainPom = new HashMap<>();
 
-        List<String> output = filterCommand2(command, Paths.get("download/" + project).toFile());
         for (String line : output) {
             Matcher m = r.matcher(line);
             if (m.find()) {
@@ -170,38 +181,5 @@ public class MainController {
     @FXML
     void loadAll() {
 
-    }
-
-
-    private static List<String> filterCommand(String command, File loc) {
-        List<String> lines = Utils.executeCommand(command, loc);
-
-        List<String> result = new ArrayList<>();
-
-        for (String line : lines) {
-            if (line.startsWith("[INFO]   ")) {
-                if (line.startsWith("[INFO]                      ")) {
-                    String s = result.get(result.size() - 1);
-                    s += line.substring(15);
-                    result.set(result.size() - 1, s);
-                } else {
-                    result.add(line);
-                }
-            }
-        }
-        return result;
-    }
-
-    private static List<String> filterCommand2(String command, File loc) {
-        List<String> lines = Utils.executeCommand(command, loc);
-
-        List<String> result = new ArrayList<>();
-
-        for (String line : lines) {
-            if (line.startsWith("[INFO] +-")) {
-                result.add(line);
-            }
-        }
-        return result;
     }
 }
