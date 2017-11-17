@@ -127,14 +127,16 @@ public class MainController {
                     new Thread(update).start();
                     new Thread(tree).start();
                     latch.await();
-                    Map<String, String> mainPom = renderTree(tree.getLines());
-                    Map<String, String> all = renderUpdate(update.getLines());
+                    Map<String, String> mainPom = renderTree(filterCommand2(tree.getLines()));
+                    Map<String, String> all = renderUpdate(filterCommand(update.getLines()));
                     table.getItems().clear();
+
                     mainPom.forEach((k, v) -> {
                         String s = all.get(k);
                         if (s != null) {
                             report.add(k + ":" + s + ":" + v);
-                            table.getItems().add(new Depend( k,v,s));
+                            log.info("k: {}, v: {}, s: {}", k, v , s);
+                            table.getItems().add(new Depend( k, v, s));
                         }
                     });
 
@@ -148,7 +150,6 @@ public class MainController {
         }
         Collections.sort(report, Comparator.naturalOrder());
 
-        report.forEach(System.out::println);
         watch.stop();
         log.info("load took {} ms", watch.getTotalTimeMillis());
     }
@@ -157,9 +158,9 @@ public class MainController {
         String pattern = "([a-z0-9.-]+):([A-z0-9-_.]+)[\\. ]+ ([A-z0-9 .-]+) -> ([A-z0-9 .-]+)";
         Map<String, String> allDependencies = new HashMap<>();
         Pattern r = Pattern.compile(pattern);
-//        dependecyController.setProjectName(project);
 
         for (String line : output) {
+            System.out.println(">" + line);
             Matcher m = r.matcher(line);
             // m find if foudn it
             if (m.find()) {
@@ -178,6 +179,7 @@ public class MainController {
         Map<String, String> mainPom = new HashMap<>();
 
         for (String line : output) {
+            System.out.println(line);
             Matcher m = r.matcher(line);
             if (m.find()) {
                 mainPom.put(m.group(2), m.group(3));
@@ -191,5 +193,34 @@ public class MainController {
     @FXML
     void search() {
 
+    }
+
+    private static List<String> filterCommand(List<String> lines) {
+        List<String> result = new ArrayList<>();
+
+        for (String line : lines) {
+            if (line.startsWith("[INFO]   ")) {
+                if (line.startsWith("[INFO]                      ")) {
+                    String s = result.get(result.size() - 1);
+                    s += line.substring(15);
+                    result.set(result.size() - 1, s);
+                } else
+                {
+                    result.add(line);
+                }
+            }
+        }
+        return  result;
+    }
+
+    private static List<String> filterCommand2(List<String> lines) {
+        List<String> result = new ArrayList<>();
+
+        for (String line : lines) {
+            if (line.startsWith("[INFO] +-")) {
+                result.add(line);
+            }
+        }
+        return  result;
     }
 }

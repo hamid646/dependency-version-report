@@ -82,7 +82,7 @@ public class Utils {
         watch.start();
         String[] paths = dir.split("/");
         Path file = null;
-        System.out.println(Arrays.toString(paths));
+        log.info("Path: {}", Arrays.toString(paths));
         if (paths.length > 1) {
             Path path1 = Files.createDirectories(Paths.get(mainPath + "/" + paths[0]));
             Path path2 = Paths.get(path1 + "/" + paths[1]);
