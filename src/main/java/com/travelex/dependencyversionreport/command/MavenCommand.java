@@ -33,7 +33,6 @@ public class MavenCommand implements Runnable {
     public void run() {
         StopWatch watch = new StopWatch();
         watch.start();
-        List<String> lines = new ArrayList<>();
         Process p;
         try {
             p = Runtime.getRuntime().exec(command, null, loc);
