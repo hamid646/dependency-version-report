@@ -7,6 +7,10 @@ import com.travelex.dependencyversionreport.command.MavenCommand;
 import com.travelex.dependencyversionreport.utils.Utils;
 
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -14,6 +18,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.service.ContentsService;
@@ -73,6 +78,18 @@ public class MainController {
     @FXML
     private ListView<Button> loadButtons;
 
+    @FXML
+    private TextField searchRepo;
+
+    @FXML
+    private TextField searchArtifact;
+
+    ObservableList<Button> dataRepo = FXCollections.observableArrayList();
+    FilteredList<Button> filterDataRepo = new FilteredList<>(dataRepo, s -> true);
+
+    ObservableList<Depend> dataTable = FXCollections.observableArrayList();
+    FilteredList<Depend> filteredTable = new FilteredList<>(dataTable, p -> true);
+
     @Autowired
     MainController() {
 
@@ -92,7 +109,7 @@ public class MainController {
                                     Button b = new Button(e.getName());
                                     b.setOnAction(a -> load(e.getName()));
                                     b.minWidth(100);
-                                    loadButtons.getItems().add(b);
+                                    dataRepo.add(b);
                                 });
                             });
 
@@ -103,6 +120,31 @@ public class MainController {
         colCurrent.setCellValueFactory(new PropertyValueFactory<>("currentVersion"));
         colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
         table.setPlaceholder(new Label("Contentless"));
+
+        searchRepo.textProperty().addListener(obs->{
+            String filter = searchRepo.getText();
+            if(filter == null || filter.length() == 0) {
+                filterDataRepo.setPredicate(s -> true);
+            }
+            else {
+                filterDataRepo.setPredicate(s -> s.getText().contains(filter));
+            }
+        });
+
+        loadButtons.setItems(filterDataRepo);
+
+        searchArtifact.textProperty().addListener((observable, oldValue, newValue) -> {
+            filteredTable.setPredicate(myObject -> {
+                if (newValue == null || newValue.isEmpty()) {
+                    return true;
+                }
+                String lowerCaseFilter = newValue.toLowerCase();
+                return String.valueOf(myObject.getArtifactId()).toLowerCase().contains(lowerCaseFilter);
+            });
+        });
+        SortedList<Depend> sortedData = new SortedList<>(filteredTable);
+        sortedData.comparatorProperty().bind(table.comparatorProperty());
+        table.setItems(sortedData);
 
         watch.stop();
         log.info("loadRepo took {} ms", watch.getTotalTimeMillis());
@@ -136,7 +178,7 @@ public class MainController {
                         if (s != null) {
                             report.add(k + ":" + s + ":" + v);
                             log.info("k: {}, v: {}, s: {}", k, v , s);
-                            table.getItems().add(new Depend( k, v, s));
+                            dataTable.add(new Depend( k, v, s));
                         }
                     });
 

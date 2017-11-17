@@ -12,7 +12,7 @@
    <items>
       <VBox>
          <children>
-            <TextField onAction="#search" promptText="Search Artifact" />
+            <TextField fx:id="searchArtifact" promptText="Search Artifact" />
             <TableView fx:id="table" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                <columns>
                   <TableColumn fx:id="colArtifact" prefWidth="75.0" text="Artifact Id" />
@@ -28,7 +28,7 @@
       </VBox>
       <VBox alignment="TOP_CENTER" spacing="10.0">
          <children>
-            <TextField promptText="Search repo" />
+            <TextField fx:id="searchRepo" promptText="Search repo" />
             <ListView fx:id="loadButtons" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS" />
          </children></VBox>
    </items>
