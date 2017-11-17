@@ -71,14 +71,6 @@ public class Utils {
             } catch (IOException e) { e.printStackTrace(); }
         });
 
-//        for (Map.Entry<String, RepositoryContents> entry : map.entrySet()) {
-//            Path pom = createPom(path, entry.getValue().getPath());
-//            Blob blob = dataService.getBlob(repo, entry.getKey());
-//            if (pom != null) {
-//                Files.write(pom, decoder.decodeBuffer(blob.getContent()));
-//            }
-//        }
-
         watch.stop();
         log.info("scanProject took {} ms", watch.getTotalTimeMillis());
 
@@ -120,28 +112,5 @@ public class Utils {
         watch.stop();
         log.info("findPom took {} ms", watch.getTotalTimeMillis());
         return Optional.empty();
-    }
-
-    public static List<String> executeCommand(String command, File loc) {
-        StopWatch watch = new StopWatch();
-        watch.start();
-        List<String> lines = new ArrayList<>();
-        Process p;
-        try {
-            p = Runtime.getRuntime().exec(command, null, loc);
-
-            boolean code = p.waitFor(1000, TimeUnit.MICROSECONDS);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                lines.add(line);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        watch.stop();
-        log.info("executeCommand took {} ms", watch.getTotalTimeMillis());
-        return lines;
     }
 }
