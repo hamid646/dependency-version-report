@@ -4,15 +4,16 @@ package com.travelex.dependencyversionreport.controllers;
 
 
 import com.travelex.dependencyversionreport.command.MavenCommand;
-import com.travelex.dependencyversionreport.enums.Show;
-import com.travelex.dependencyversionreport.enums.Sort;
 import com.travelex.dependencyversionreport.utils.Utils;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
-import javafx.scene.layout.FlowPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.cell.PropertyValueFactory;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.service.ContentsService;
 import org.eclipse.egit.github.core.service.DataService;
@@ -51,17 +52,25 @@ public class MainController {
 
     private List<Repository> repositories;
 
-    @FXML
-    private FlowPane showPanel;
+    // FXML
 
     @FXML
-    private ListView<String> list;
+    private TableView<Depend> table;
 
     @FXML
-    private ChoiceBox<Sort> comboSort;
+    private TableColumn<Depend, String> colArtifact;
 
     @FXML
-    private ChoiceBox<Show> comboShow;
+    private TableColumn<Depend, String> colCurrent;
+
+    @FXML
+    private TableColumn<Depend, String> colNew;
+
+    @FXML
+    private TextArea pomArea;
+
+    @FXML
+    private ListView<Button> loadButtons;
 
     @Autowired
     MainController() {
@@ -69,69 +78,74 @@ public class MainController {
     }
 
     @FXML
-    void loadRepo() {
+    public void initialize() {
         StopWatch watch = new StopWatch();
         watch.start();
         try {
             repositories = repositories == null ?
                             repositoryService.getOrgRepositories("Travelex") :
                             repositories;
-            repositories.forEach(e -> {
-                Platform.runLater(() -> list.getItems().add(e.getName()));
-            });
+            repositories.stream().sorted(Comparator.comparing(Repository::getName)).
+                            forEach(e -> {
+                                Platform.runLater(() -> {
+                                    Button b = new Button(e.getName());
+                                    b.setOnAction(a -> load(e.getName()));
+                                    b.minWidth(100);
+                                    loadButtons.getItems().add(b);
+                                });
+                            });
 
         } catch (IOException e) {
             System.out.println("Failed for : " + e);
         }
+        colArtifact.setCellValueFactory(new PropertyValueFactory<>("artifactId"));
+        colCurrent.setCellValueFactory(new PropertyValueFactory<>("currentVersion"));
+        colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
 
         watch.stop();
         log.info("loadRepo took {} ms", watch.getTotalTimeMillis());
     }
 
-    @FXML
-    void load() {
+    void load(String project) {
         StopWatch watch = new StopWatch();
         watch.start();
-        String selectedItem = list.getSelectionModel().getSelectedItem();
-        if (selectedItem != null) {
-            List<String> report = new ArrayList<>();
+        List<String> report = new ArrayList<>();
 
-            try {
-                for (Repository repo : repositories) {
-                    if (repo.getName().equals(selectedItem)) {
+        try {
+            for (Repository repo : repositories) {
+                if (repo.getName().equals(project)) {
 
-                        Utils.scanProject(dataService, contentsService, repo);
+                    Utils.scanProject(dataService, contentsService, repo);
 
-                        CountDownLatch latch = new CountDownLatch(2);
+                    CountDownLatch latch = new CountDownLatch(2);
 
-                        MavenCommand update = createMavenCommand(latch, selectedItem, "mvn versions:display-dependency-updates");
-                        MavenCommand tree = createMavenCommand(latch, selectedItem, "mvn dependency:tree");
+                    MavenCommand update = createMavenCommand(latch, project, "mvn versions:display-dependency-updates");
+                    MavenCommand tree = createMavenCommand(latch, project, "mvn dependency:tree");
 
-                        new Thread(update).start();
-                        new Thread(tree).start();
-                        latch.await();
-                        Map<String, String> mainPom = renderTree(tree.getLines());
-                        Map<String, String> all = renderUpdate(update.getLines());
+                    new Thread(update).start();
+                    new Thread(tree).start();
+                    latch.await();
+                    Map<String, String> mainPom = renderTree(tree.getLines());
+                    Map<String, String> all = renderUpdate(update.getLines());
 
-                        mainPom.forEach((k, v) -> {
-                            String s = all.get(k);
-                            if (s != null) {
-                                report.add(k + ":" + s + ":" + v);
-                            }
-                        });
+                    mainPom.forEach((k, v) -> {
+                        String s = all.get(k);
+                        if (s != null) {
+                            report.add(k + ":" + s + ":" + v);
+                        }
+                    });
 
-                        break;
-                    }
+                    break;
                 }
-
-
-            } catch (Exception e) {
-                e.printStackTrace();
             }
-            Collections.sort(report, Comparator.naturalOrder());
 
-            report.forEach(System.out::println);
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+        Collections.sort(report, Comparator.naturalOrder());
+
+        report.forEach(System.out::println);
         watch.stop();
         log.info("load took {} ms", watch.getTotalTimeMillis());
     }
@@ -143,7 +157,6 @@ public class MainController {
     private Map<String, String> renderUpdate(List<String> output) {
         String pattern = "([a-z0-9.-]+):([A-z0-9-_.]+)[\\. ]+ ([A-z0-9 .-]+) -> ([A-z0-9 .-]+)";
         Map<String, String> allDependencies = new HashMap<>();
-        DependecyController dependecyController = new DependecyController();
         Pattern r = Pattern.compile(pattern);
 //        dependecyController.setProjectName(project);
 
@@ -151,14 +164,13 @@ public class MainController {
             Matcher m = r.matcher(line);
             // m find if foudn it
             if (m.find()) {
-                dependecyController.addDepend(m.group(1), m.group(2), m.group(3), m.group(4));
+                table.getItems().add(new Depend( m.group(2), m.group(3), m.group(4)));
                 allDependencies.put(m.group(2), m.group(4));
             } else {
                 System.out.println("WTF       : " + line);
             }
         }
 
-        showPanel.getChildren().add(dependecyController);
         return allDependencies;
     }
 
@@ -179,7 +191,7 @@ public class MainController {
     }
 
     @FXML
-    void loadAll() {
+    void search() {
 
     }
 }
