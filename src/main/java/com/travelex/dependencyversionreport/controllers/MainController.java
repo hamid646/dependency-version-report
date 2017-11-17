@@ -119,8 +119,8 @@ public class MainController {
 
                     CountDownLatch latch = new CountDownLatch(2);
 
-                    MavenCommand update = createMavenCommand(latch, project, "mvn versions:display-dependency-updates");
-                    MavenCommand tree = createMavenCommand(latch, project, "mvn dependency:tree");
+                    MavenCommand update = new MavenCommand(latch, "mvn versions:display-dependency-updates", Paths.get("download/" + project).toFile());
+                    MavenCommand tree = new MavenCommand(latch, "mvn dependency:tree", Paths.get("download/" + project).toFile());
 
                     new Thread(update).start();
                     new Thread(tree).start();
@@ -148,10 +148,6 @@ public class MainController {
         report.forEach(System.out::println);
         watch.stop();
         log.info("load took {} ms", watch.getTotalTimeMillis());
-    }
-
-    private MavenCommand createMavenCommand(CountDownLatch latch, String project, String command) {
-        return new MavenCommand(latch, command, Paths.get("download/" + project).toFile());
     }
 
     private Map<String, String> renderUpdate(List<String> output) {
