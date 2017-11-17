@@ -171,7 +171,7 @@ public class MainController {
                     latch.await();
                     Map<String, String> mainPom = renderTree(filterCommand2(tree.getLines()));
                     Map<String, String> all = renderUpdate(filterCommand(update.getLines()));
-                    table.getItems().clear();
+                    dataTable.clear();
 
                     mainPom.forEach((k, v) -> {
                         String s = all.get(k);
@@ -202,7 +202,6 @@ public class MainController {
         Pattern r = Pattern.compile(pattern);
 
         for (String line : output) {
-            System.out.println(">" + line);
             Matcher m = r.matcher(line);
             // m find if foudn it
             if (m.find()) {

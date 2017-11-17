@@ -47,7 +47,7 @@ public class MavenCommand implements Runnable {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        log.info("Lines: {}", lines.size());
+        log.info("Command: {}, Lines: {}", command, lines.size());
         watch.stop();
         log.info("executeCommand took {} ms", watch.getTotalTimeMillis());
         this.latch.countDown();

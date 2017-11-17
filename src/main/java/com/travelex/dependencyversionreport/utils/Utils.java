@@ -2,6 +2,8 @@
 
 package com.travelex.dependencyversionreport.utils;
 
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import org.eclipse.egit.github.core.Blob;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.RepositoryContents;
@@ -66,7 +68,9 @@ public class Utils {
                 pom = createPom(path, entry.getValue().getPath());
                 Blob blob = dataService.getBlob(repo, entry.getKey());
                 if (pom != null) {
-                    Files.write(pom, decoder.decodeBuffer(blob.getContent()));
+//                    byte[] ptext = blob.getContent().getBytes(UTF_8);
+//                    System.out.println(new String(blob.getContent().getBytes(UTF_8)));
+                    Files.write(pom, decoder.decodeBuffer(new String(blob.getContent().getBytes(UTF_8))));
                 }
             } catch (IOException e) { e.printStackTrace(); }
         });
