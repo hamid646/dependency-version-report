@@ -15,11 +15,13 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.util.Callback;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.service.ContentsService;
 import org.eclipse.egit.github.core.service.DataService;
@@ -132,8 +134,9 @@ public class MainController {
         });
 
         loadButtons.setItems(filterDataRepo);
-
+        colorTableCell();
         searchArtifact.textProperty().addListener((observable, oldValue, newValue) -> {
+            colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
             filteredTable.setPredicate(myObject -> {
                 if (newValue == null || newValue.isEmpty()) {
                     return true;
@@ -141,6 +144,8 @@ public class MainController {
                 String lowerCaseFilter = newValue.toLowerCase();
                 return String.valueOf(myObject.getArtifactId()).toLowerCase().contains(lowerCaseFilter);
             });
+
+            colorTableCell();
         });
         SortedList<Depend> sortedData = new SortedList<>(filteredTable);
         sortedData.comparatorProperty().bind(table.comparatorProperty());
@@ -149,6 +154,50 @@ public class MainController {
         watch.stop();
         log.info("loadRepo took {} ms", watch.getTotalTimeMillis());
     }
+
+    private void colorTableCell() {
+        colNew.setCellFactory(new Callback<TableColumn<Depend, String>, TableCell<Depend, String>>() {
+            public TableCell call(TableColumn<Depend, String> param) {
+                return new TableCell<Depend, String>() {
+                    @Override
+                    public void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (!empty) {
+                            Depend rowDataItem = (Depend) this.getTableRow().getItem();
+                            if (rowDataItem != null) {
+                                color(rowDataItem, this);
+                                setText(item);
+                            }
+                        }
+                    }
+                };
+            }
+        });
+    }
+
+    private void color(Depend rowDataItem, TableCell<Depend, String> tableCell) {
+        String[] current = rowDataItem.getCurrentVersion().split("\\.");
+        String[] next = rowDataItem.getNewVersion().split("\\.");
+        int max = Math.max(current.length, next.length);
+        int step = 0;
+        for (step = 0; step < max; step++) {
+            if (!current[step].equalsIgnoreCase(next[step])) {
+                switch (step) {
+                    case 0:
+                        tableCell.setStyle("-fx-background-color: indianred");
+                        break;
+                    case 1:
+                        tableCell.setStyle("-fx-background-color: orange");
+                        break;
+                    case 2:
+                        tableCell.setStyle("-fx-background-color: yellow");
+                        break;
+                }
+                return;
+            }
+        }
+    }
+
 
     void load(String project) {
         StopWatch watch = new StopWatch();
