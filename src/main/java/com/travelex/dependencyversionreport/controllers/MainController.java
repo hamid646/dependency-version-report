@@ -3,6 +3,7 @@
 package com.travelex.dependencyversionreport.controllers;
 
 
+import com.travelex.dependencyversionreport.LoadingScreen;
 import com.travelex.dependencyversionreport.model.Depend;
 import com.travelex.dependencyversionreport.utils.Utils;
 
@@ -19,7 +20,6 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.util.Callback;
@@ -116,15 +116,19 @@ public class MainController {
                         forEach(repo -> Platform.runLater(() -> {
                             Button b = new Button(repo.getName());
                             b.setOnAction(a -> {
-                                dataTable.clear();
-                                gitController.loadRepo(repo).forEach(f -> {
-                                    dataTable.add(f.transform());
-                                    projectName.setText(repo.getName());
-                                    outdateLibs.setText(String.valueOf(filteredTable.size()));
+                                final LoadingScreen ls = new LoadingScreen(table.getScene().getWindow());
+                                Thread t = new Thread(() -> {
+                                    Platform.runLater(() -> ls.start("Loading project files..."));
+                                    dataTable.clear();
+                                    gitController.loadRepo(repo).forEach(f -> dataTable.add(f.transform()));
+                                    Platform.runLater(() -> ls.remove());
                                 });
+                                t.start();
                             });
                             b.minWidth(100);
                             dataRepo.add(b);
+                            projectName.setText(repo.getName());
+                            outdateLibs.setText(String.valueOf(filteredTable.size()));
                         }));
 
         watch.stop();
