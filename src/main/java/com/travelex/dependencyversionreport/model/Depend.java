@@ -1,6 +1,6 @@
 // Copyright (c) 2015 Travelex Ltd
 
-package com.travelex.dependencyversionreport.controllers;
+package com.travelex.dependencyversionreport.model;
 
 import javafx.beans.property.SimpleStringProperty;
 

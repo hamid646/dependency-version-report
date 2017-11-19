@@ -2,8 +2,11 @@
 
 package com.travelex.dependencyversionreport.utils;
 
-import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
+
+import com.travelex.dependencyversionreport.model.Depend;
+
+import javafx.scene.control.TableCell;
 import org.eclipse.egit.github.core.Blob;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.RepositoryContents;
@@ -15,10 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 import sun.misc.BASE64Decoder;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,7 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class Utils {
@@ -36,7 +37,10 @@ public class Utils {
     private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
     private static BASE64Decoder decoder = new BASE64Decoder();
-    private static String MAIN_DIR = "download";
+    private static final String MAIN_DIR = "download";
+    private static final String PATTERN_UPDATE = "([a-z0-9.-]+):([A-z0-9-_.]+)[\\. ]+ ([A-z0-9 .-]+) -> ([A-z0-9 .-]+)";
+    private static final String PATTERN_TREE = "\\] \\+- ([a-z0-9-_.]+):([a-z0-9-_.]+):[a-z]+:([A-z0-9.-]+)";
+
 
     public static Map<String, RepositoryContents> scanProject(DataService dataService,
                     ContentsService contentsService, Repository repo) throws IOException {
@@ -116,5 +120,90 @@ public class Utils {
         watch.stop();
         log.info("findPom took {} ms", watch.getTotalTimeMillis());
         return Optional.empty();
+    }
+
+    public static void color(Depend rowDataItem, TableCell<Depend, String> tableCell) {
+        String[] current = rowDataItem.getCurrentVersion().split("\\.");
+        String[] next = rowDataItem.getNewVersion().split("\\.");
+        int max = Math.max(current.length, next.length);
+        int step = 0;
+        for (step = 0; step < max; step++) {
+            if (!current[step].equalsIgnoreCase(next[step])) {
+                switch (step) {
+                    case 0:
+                        tableCell.setStyle("-fx-background-color: indianred");
+                        break;
+                    case 1:
+                        tableCell.setStyle("-fx-background-color: orange");
+                        break;
+                    case 2:
+                        tableCell.setStyle("-fx-background-color: yellow");
+                        break;
+                }
+                return;
+            }
+        }
+    }
+
+    public static Map<String, String> renderUpdate(List<String> output) {
+        Map<String, String> allDependencies = new HashMap<>();
+        Pattern r = Pattern.compile(PATTERN_UPDATE);
+
+        for (String line : output) {
+            Matcher m = r.matcher(line);
+            // m find if foudn it
+            if (m.find()) {
+                allDependencies.put(m.group(2), m.group(4));
+            } else {
+                System.out.println("WTF       : " + line);
+            }
+        }
+
+        return allDependencies;
+    }
+
+    public static Map<String, String> renderTree(List<String> output) {
+        Pattern r = Pattern.compile(PATTERN_TREE);
+        Map<String, String> mainPom = new HashMap<>();
+
+        for (String line : output) {
+            System.out.println(line);
+            Matcher m = r.matcher(line);
+            if (m.find()) {
+                mainPom.put(m.group(2), m.group(3));
+            } else {
+                System.out.println("WTF       : " + line);
+            }
+        }
+        return mainPom;
+    }
+
+    public static List<String> filterCommand(List<String> lines) {
+        List<String> result = new ArrayList<>();
+
+        for (String line : lines) {
+            if (line.startsWith("[INFO]   ")) {
+                if (line.startsWith("[INFO]                      ")) {
+                    String s = result.get(result.size() - 1);
+                    s += line.substring(15);
+                    result.set(result.size() - 1, s);
+                } else
+                {
+                    result.add(line);
+                }
+            }
+        }
+        return  result;
+    }
+
+    public static List<String> filterCommand2(List<String> lines) {
+        List<String> result = new ArrayList<>();
+
+        for (String line : lines) {
+            if (line.startsWith("[INFO] +-")) {
+                result.add(line);
+            }
+        }
+        return  result;
     }
 }
