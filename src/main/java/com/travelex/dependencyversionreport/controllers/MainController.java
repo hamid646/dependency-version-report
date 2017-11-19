@@ -13,6 +13,7 @@ import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TableCell;
@@ -43,6 +44,15 @@ public class MainController {
     private TableView<Depend> table;
 
     @FXML
+    private Label projectName;
+
+    @FXML
+    private Label outdateLibs;
+
+    @FXML
+    private CheckBox isTop;
+
+    @FXML
     private TableColumn<Depend, String> colArtifact;
 
     @FXML
@@ -67,7 +77,7 @@ public class MainController {
     FilteredList<Button> filterDataRepo = new FilteredList<>(dataRepo, s -> true);
 
     ObservableList<Depend> dataTable = FXCollections.observableArrayList();
-    FilteredList<Depend> filteredTable = new FilteredList<>(dataTable, p -> true);
+    FilteredList<Depend> filteredTable = new FilteredList<>(dataTable, p -> isTop.isSelected() ? p.isTop() : true);
 
     @Autowired
     MainController() {
@@ -84,12 +94,11 @@ public class MainController {
         colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
         table.setPlaceholder(new Label("Contentless"));
 
-        searchRepo.textProperty().addListener(obs->{
+        searchRepo.textProperty().addListener(obs -> {
             String filter = searchRepo.getText();
-            if(filter == null || filter.isEmpty()) {
+            if (filter == null || filter.isEmpty()) {
                 filterDataRepo.setPredicate(s -> true);
-            }
-            else {
+            } else {
                 filterDataRepo.setPredicate(s -> s.getText().contains(filter));
             }
         });
@@ -98,13 +107,7 @@ public class MainController {
         colorTableCell();
         searchArtifact.textProperty().addListener((observable, oldValue, newValue) -> {
             colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
-            filteredTable.setPredicate(myObject -> {
-                if (newValue == null || newValue.isEmpty()) {
-                    return true;
-                }
-                String lowerCaseFilter = newValue.toLowerCase();
-                return myObject.getArtifactId().toLowerCase().contains(lowerCaseFilter);
-            });
+            filterTable();
 
             colorTableCell();
         });
@@ -117,9 +120,12 @@ public class MainController {
                             Button b = new Button(repo.getName());
                             b.setOnAction(a -> {
                                 dataTable.clear();
-                                gitController.loadRepo(repo).forEach(f ->{
-                                dataTable.add(f.transform());
-                            });});
+                                gitController.loadRepo(repo).forEach(f -> {
+                                    dataTable.add(f.transform());
+                                    projectName.setText(repo.getName());
+                                    outdateLibs.setText(String.valueOf(filteredTable.size()));
+                                });
+                            });
                             b.minWidth(100);
                             dataRepo.add(b);
                         }));
@@ -146,5 +152,19 @@ public class MainController {
                 };
             }
         });
+    }
+
+    @FXML
+    void filterTable() {
+
+        final String searchAr = searchArtifact.getText() != null ? searchArtifact.getText().toLowerCase() : null;
+        filteredTable.setPredicate(row -> {
+            boolean result = row.getArtifactId().toLowerCase().contains(searchAr);
+            if (result && isTop.isSelected()) {
+                result = row.isTop();
+            }
+            return result;
+        });
+        outdateLibs.setText(String.valueOf(filteredTable.size()));
     }
 }

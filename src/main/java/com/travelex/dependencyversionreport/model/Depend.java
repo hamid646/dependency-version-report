@@ -5,14 +5,18 @@ package com.travelex.dependencyversionreport.model;
 import javafx.beans.property.SimpleStringProperty;
 
 public class Depend {
+    private final String groupId;
     private final SimpleStringProperty artifactId;
     private final SimpleStringProperty currentVersion;
     private final SimpleStringProperty newVersion;
+    private final boolean isTop;
 
-    public Depend(String artifactId, String currentVersion, String newVersion) {
+    public Depend(String groupId, String artifactId, String currentVersion, String newVersion, boolean isTop) {
+        this.groupId = groupId;
         this.artifactId = new SimpleStringProperty(artifactId);
         this.currentVersion = new SimpleStringProperty(currentVersion);
         this.newVersion = new SimpleStringProperty(newVersion);
+        this.isTop = isTop;
     }
 
     public String getArtifactId() {
@@ -25,5 +29,13 @@ public class Depend {
 
     public String getNewVersion() {
         return newVersion.get();
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public boolean isTop() {
+        return isTop;
     }
 }

@@ -5,6 +5,7 @@ package com.travelex.dependencyversionreport.utils;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.travelex.dependencyversionreport.model.Depend;
+import com.travelex.dependencyversionreport.model.Report;
 
 import javafx.scene.control.TableCell;
 import org.eclipse.egit.github.core.Blob;
@@ -34,7 +35,7 @@ import java.util.regex.Pattern;
 @Component
 public class Utils {
 
-    private static final Logger log = LoggerFactory.getLogger(Utils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
 
     private static BASE64Decoder decoder = new BASE64Decoder();
     private static final String MAIN_DIR = "download";
@@ -42,27 +43,28 @@ public class Utils {
     private static final String PATTERN_TREE = "\\] \\+- ([a-z0-9-_.]+):([a-z0-9-_.]+):[a-z]+:([A-z0-9.-]+)";
 
 
-    public static Map<String, RepositoryContents> scanProject(DataService dataService,
-                    ContentsService contentsService, Repository repo) throws IOException {
+    public static Map<String, RepositoryContents> scanProject(DataService dataService, ContentsService contentsService, Repository repo)
+                    throws IOException {
         StopWatch watch = new StopWatch();
         watch.start();
         Map<String, RepositoryContents> map = new HashMap<>();
         RepositoryContents main = null;
-            main = contentsService.getContents(repo, "/pom.xml").get(0);
+        main = contentsService.getContents(repo, "/pom.xml").get(0);
         map.put(main.getSha(), main);
-        log.info("scanProject1 took {} ms", watch.getTotalTimeMillis());
+        LOGGER.info("scanProject1 took {} ms", watch.getTotalTimeMillis());
 
-        contentsService.getContents(repo).parallelStream()
-                        .filter(r -> ("dir".equals(r.getType()) && r.getName().startsWith(repo.getName())))
+        contentsService.getContents(repo).parallelStream().filter(r -> ("dir".equals(r.getType()) && r.getName().startsWith(repo.getName())))
                         .forEach(r -> {
                             RepositoryContents content = null;
                             try {
                                 content = contentsService.getContents(repo, r.getName() + "/pom.xml").get(0);
-                            } catch (IOException e) { e.printStackTrace(); }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                             map.put(content.getSha(), content);
                         });
 
-        log.info("scanProject2 took {} ms", watch.getTotalTimeMillis());
+        LOGGER.info("scanProject2 took {} ms", watch.getTotalTimeMillis());
 
         Path path = Files.createDirectories(Paths.get(MAIN_DIR + "/" + repo.getName()));
 
@@ -72,15 +74,17 @@ public class Utils {
                 pom = createPom(path, entry.getValue().getPath());
                 Blob blob = dataService.getBlob(repo, entry.getKey());
                 if (pom != null) {
-//                    byte[] ptext = blob.getContent().getBytes(UTF_8);
-//                    System.out.println(new String(blob.getContent().getBytes(UTF_8)));
+                    //                    byte[] ptext = blob.getContent().getBytes(UTF_8);
+                    //                    System.out.println(new String(blob.getContent().getBytes(UTF_8)));
                     Files.write(pom, decoder.decodeBuffer(new String(blob.getContent().getBytes(UTF_8))));
                 }
-            } catch (IOException e) { e.printStackTrace(); }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
 
         watch.stop();
-        log.info("scanProject took {} ms", watch.getTotalTimeMillis());
+        LOGGER.info("scanProject took {} ms", watch.getTotalTimeMillis());
 
         return map;
     }
@@ -90,7 +94,7 @@ public class Utils {
         watch.start();
         String[] paths = dir.split("/");
         Path file = null;
-        log.info("Path: {}", Arrays.toString(paths));
+        LOGGER.info("Path: {}", Arrays.toString(paths));
         if (paths.length > 1) {
             Path path1 = Files.createDirectories(Paths.get(mainPath + "/" + paths[0]));
             Path path2 = Paths.get(path1 + "/" + paths[1]);
@@ -104,12 +108,12 @@ public class Utils {
             }
         }
         watch.stop();
-        log.info("createPom took {} ms", watch.getTotalTimeMillis());
+        LOGGER.info("createPom took {} ms", watch.getTotalTimeMillis());
         return file;
     }
 
-    private static Optional<RepositoryContents> findPom(ContentsService contentsService,
-                    Repository repo, RepositoryContents content) throws IOException {
+    private static Optional<RepositoryContents> findPom(ContentsService contentsService, Repository repo, RepositoryContents content)
+                    throws IOException {
         StopWatch watch = new StopWatch();
         watch.start();
         for (RepositoryContents rp : contentsService.getContents(repo, content.getPath())) {
@@ -118,7 +122,7 @@ public class Utils {
             }
         }
         watch.stop();
-        log.info("findPom took {} ms", watch.getTotalTimeMillis());
+        LOGGER.info("findPom took {} ms", watch.getTotalTimeMillis());
         return Optional.empty();
     }
 
@@ -145,40 +149,38 @@ public class Utils {
         }
     }
 
-    public static Map<String, String> renderUpdate(List<String> output) {
-        Map<String, String> allDependencies = new HashMap<>();
+    public static Map<String, Report> renderUpdate(List<String> output) {
+        Map<String, Report> allDependencies = new HashMap<>();
         Pattern r = Pattern.compile(PATTERN_UPDATE);
 
         for (String line : output) {
             Matcher m = r.matcher(line);
-            // m find if foudn it
             if (m.find()) {
-                allDependencies.put(m.group(2), m.group(4));
+                allDependencies.put(m.group(2), new Report(m.group(1), m.group(2), m.group(3), m.group(4)));
             } else {
-                System.out.println("WTF       : " + line);
+                LOGGER.warn("RenderUpdate failed for {}", line);
             }
         }
 
         return allDependencies;
     }
 
-    public static Map<String, String> renderTree(List<String> output) {
+    public static Map<String, Report> renderTree(List<String> output) {
         Pattern r = Pattern.compile(PATTERN_TREE);
-        Map<String, String> mainPom = new HashMap<>();
+        Map<String, Report> mainPom = new HashMap<>();
 
         for (String line : output) {
-            System.out.println(line);
             Matcher m = r.matcher(line);
             if (m.find()) {
-                mainPom.put(m.group(2), m.group(3));
+                mainPom.put(m.group(2), new Report(m.group(1), m.group(2), m.group(3)));
             } else {
-                System.out.println("WTF       : " + line);
+                LOGGER.warn("RenderTree failed for {}", line);
             }
         }
         return mainPom;
     }
 
-    public static List<String> filterCommand(List<String> lines) {
+    public static List<String> filterUpdate(List<String> lines) {
         List<String> result = new ArrayList<>();
 
         for (String line : lines) {
@@ -187,16 +189,15 @@ public class Utils {
                     String s = result.get(result.size() - 1);
                     s += line.substring(15);
                     result.set(result.size() - 1, s);
-                } else
-                {
+                } else {
                     result.add(line);
                 }
             }
         }
-        return  result;
+        return result;
     }
 
-    public static List<String> filterCommand2(List<String> lines) {
+    public static List<String> filterTree(List<String> lines) {
         List<String> result = new ArrayList<>();
 
         for (String line : lines) {
@@ -204,6 +205,6 @@ public class Utils {
                 result.add(line);
             }
         }
-        return  result;
+        return result;
     }
 }

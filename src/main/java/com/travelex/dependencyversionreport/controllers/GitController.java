@@ -69,16 +69,16 @@ public class GitController {
             new Thread(update).start();
             new Thread(tree).start();
             latch.await();
-            Map<String, String> mainPom = Utils.renderTree(Utils.filterCommand2(tree.getLines()));
-            Map<String, String> all = Utils.renderUpdate(Utils.filterCommand(update.getLines()));
-
-            mainPom.forEach((k, v) -> {
-                String s = all.get(k);
-                if (s != null) {
-                    reportList.add(new Report(k, s, v));
-                    LOGGER.info("k: {}, v: {}, s: {}", k, v, s);
+            Map<String, Report> mainPom = Utils.renderTree(Utils.filterTree(tree.getLines()));
+            Map<String, Report> all = Utils.renderUpdate(Utils.filterUpdate(update.getLines()));
+            for (String key : mainPom.keySet())
+            {
+                if (all.containsKey(key))
+                {
+                    all.get(key).setTop(true);
                 }
-            });
+            }
+            reportList.addAll(all.values());
 
         } catch (Exception e) {
             e.printStackTrace();
