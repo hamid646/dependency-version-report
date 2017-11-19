@@ -62,9 +62,6 @@ public class MainController {
     private TableColumn<Depend, String> colNew;
 
     @FXML
-    private TextArea pomArea;
-
-    @FXML
     private ListView<Button> loadButtons;
 
     @FXML
