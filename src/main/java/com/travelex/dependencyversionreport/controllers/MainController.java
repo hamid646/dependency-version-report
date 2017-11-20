@@ -118,17 +118,25 @@ public class MainController {
                             b.setOnAction(a -> {
                                 final LoadingScreen ls = new LoadingScreen(table.getScene().getWindow());
                                 Thread t = new Thread(() -> {
-                                    Platform.runLater(() -> ls.start("Loading project files..."));
-                                    dataTable.clear();
+                                    Platform.runLater(() -> {
+                                        ls.start("Loading project files...");
+                                        colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
+                                        dataTable.clear();
+                                    });
+
                                     gitController.loadRepo(repo).forEach(f -> dataTable.add(f.transform()));
-                                    Platform.runLater(() -> ls.remove());
+
+                                    Platform.runLater(() -> {
+                                        projectName.setText(repo.getName());
+                                        outdateLibs.setText(String.valueOf(filteredTable.size()));
+                                        ls.remove();
+                                        colorTableCell();
+                                    });
                                 });
                                 t.start();
                             });
                             b.minWidth(100);
                             dataRepo.add(b);
-                            projectName.setText(repo.getName());
-                            outdateLibs.setText(String.valueOf(filteredTable.size()));
                         }));
 
         watch.stop();
