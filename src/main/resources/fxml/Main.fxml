@@ -22,7 +22,7 @@
                   <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Project name :" />
                   <Label fx:id="projectName" prefWidth="80.0">
                      <font>
-                        <Font name="System Bold" size="18.0" />
+                        <Font name="System Bold" />
                      </font>
                   </Label>
                   <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Outdate Libs :" />
