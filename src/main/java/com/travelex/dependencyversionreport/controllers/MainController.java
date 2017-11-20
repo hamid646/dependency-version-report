@@ -165,7 +165,7 @@ public class MainController {
 
     @FXML
     void filterTable() {
-
+        colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
         final String searchAr = searchArtifact.getText() != null ? searchArtifact.getText().toLowerCase() : null;
         filteredTable.setPredicate(row -> {
             boolean result = row.getArtifactId().toLowerCase().contains(searchAr);
@@ -175,5 +175,6 @@ public class MainController {
             return result;
         });
         outdateLibs.setText(String.valueOf(filteredTable.size()));
+        colorTableCell();
     }
 }
