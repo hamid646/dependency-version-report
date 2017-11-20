@@ -118,17 +118,25 @@ public class MainController {
                             b.setOnAction(a -> {
                                 final LoadingScreen ls = new LoadingScreen(table.getScene().getWindow());
                                 Thread t = new Thread(() -> {
-                                    Platform.runLater(() -> ls.start("Loading project files..."));
-                                    dataTable.clear();
+                                    Platform.runLater(() -> {
+                                        ls.start("Loading project files...");
+                                        colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
+                                        dataTable.clear();
+                                    });
+
                                     gitController.loadRepo(repo).forEach(f -> dataTable.add(f.transform()));
-                                    Platform.runLater(() -> ls.remove());
+
+                                    Platform.runLater(() -> {
+                                        projectName.setText(repo.getName());
+                                        outdateLibs.setText(String.valueOf(filteredTable.size()));
+                                        ls.remove();
+                                        colorTableCell();
+                                    });
                                 });
                                 t.start();
                             });
                             b.minWidth(100);
                             dataRepo.add(b);
-                            projectName.setText(repo.getName());
-                            outdateLibs.setText(String.valueOf(filteredTable.size()));
                         }));
 
         watch.stop();
@@ -157,7 +165,7 @@ public class MainController {
 
     @FXML
     void filterTable() {
-
+        colNew.setCellValueFactory(new PropertyValueFactory<>("newVersion"));
         final String searchAr = searchArtifact.getText() != null ? searchArtifact.getText().toLowerCase() : null;
         filteredTable.setPredicate(row -> {
             boolean result = row.getArtifactId().toLowerCase().contains(searchAr);
@@ -167,5 +175,6 @@ public class MainController {
             return result;
         });
         outdateLibs.setText(String.valueOf(filteredTable.size()));
+        colorTableCell();
     }
 }
